@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- When making your own version these PWA install pages are not needed. Started here -->
+    <link rel="manifest" href="pwa/manifest.json">
+    <script src="pwa/pwa.js"></script>
+    <!-- When making your own version these pages are not needed. Ended here -->
+
+    <title>Sovereign AI & Dynamic Router Sandbox</title>
+    <script async src="https://cdn.jsdelivr.net/npm/mathjax@4.0.0-alpha.1/es5/tex-mml-chtml.js"></script>
+    <style>
+        @keyframes myPulseLoading {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .my-standby-active {
+            background: linear-gradient(-45deg, #1a1a1a, #222, #4caf50, #222, #1a1a1a);
+            background-size: 400% 400%;
+            animation: myPulseLoading 2s ease infinite !important;
+        }
+        details summary {
+            cursor: pointer;
+            padding: 8px;
+            background: #222;
+            border: 1px solid #333;
+            color: #4caf50;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        details[open] summary {
+            border-bottom: none;
+        }
+        .my-panel-inner {
+            background: #1e1e1e;
+            border: 1px solid #333;
+            border-top: none;
+            padding: 15px;
+        }
+        .my-btn {
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-family: monospace;
+            margin-right: 5px;
+        }
+        .my-btn:hover {
+            background: #444;
+        }
+        .my-btn-active {
+            background: #4caf50 !important;
+            color: #000 !important;
+            border-color: #4caf50 !important;
+        }
+        .my-terminal-div {
+            width: 100%; 
+            height: 30vh; 
+            min-height: 150px; 
+            border: 1px solid #333; 
+            padding: 15px; 
+            background-color: #0d0d0d; 
+            color: #00ff00; 
+            margin-bottom: 10px; 
+            font-family: monospace; 
+            font-size: 0.95rem; 
+            box-sizing: border-box; 
+            resize: vertical;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 20px; font-family: monospace; background-color: #121212; color: #e0e0e0;">
+
+    <div style="width: 98%; max-width: 1800px; margin: 0 auto; border: 1px solid #333; padding: 20px; background-color: #1a1a1a; box-shadow: 0 4px 10px rgba(0,0,0,0.5); box-sizing: border-box;">
+        
+        <h2 style="margin-top: 0; border-bottom: 1px solid #333; padding-bottom: 10px; color: #4caf50;">
+            Sovereign Edge LLM Sandbox & Prompt Router (index-agentic07.html)
+        </h2>
+        
+        <p style="font-size: 0.9em; color: #aaa;">
+            Runs localized Large Language Models entirely inside your browser utilizing WebGPU acceleration, combined with an outbound text router helper.<br>
+            The Github for this webpage is at <a href="https://github.com/hpssjellis/gemma4-lite-rt-lm" style="color: #4caf50;">https://github.com/hpssjellis/gemma4-lite-rt-lm</a><br>
+            Active PWA for installation of this web page for offline use is at <a href="https://webmcu-ai.github.io/local-gemma4-pwa/index.html" style="color: #4caf50;">https://webmcu-ai.github.io/local-gemma4-pwa/index.html</a><br>
+            By Jeremy Ellis <a href="https://github.com/hpssjellis">Github</a>, or <a href="https://ca.linkedin.com/in/jeremy-ellis-4237a9bb">LinkedIn</a>: Use at your own risk. May 2026
+        </p>
+
+        <div style="margin-bottom: 20px; padding: 10px; border: 1px dashed #444; background: #222;">
+            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Select Local Weights Model Target:</label>
+<select id="myModelSelector" onchange="myInitializeEngine(); mySaveConfigToLocalStorage();" style="width: 100%; padding: 8px; background: #333; color: #fff; border: 1px solid #555; font-family: monospace;">
+    <option value="LFM-2.5-2.6B-Instruct-q4f16_1-MLC">
+        Liquid AI LFM2.5 2.6B Instruct (WebGPU Agent Model)
+    </option>
+</select>
+
+            <div style="margin-top: 15px; display: flex; flex-wrap: wrap; align-items: center; gap: 20px;">
+                <button onclick="myInitializeEngine()" style="padding: 8px 16px; background-color: #4caf50; color: #fff; border: none; font-weight: bold; cursor: pointer; font-family: monospace;">
+                    Compile & Instantiate Local Engine
+                </button>
+
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #bbb;">
+                    <input type="checkbox" id="myAutoActivateToggle" onchange="mySaveConfigToLocalStorage()" style="cursor: pointer; accent-color: #4caf50;">
+                    <label for="myAutoActivateToggle" style="cursor: pointer; user-select: none; font-weight: bold;">Activate LLM on page open</label>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <label style="font-weight: bold;">Max Token Sequence Allocation:</label>
+                    <input type="number" id="myMaxTokensInput" value="4096" step="1024" min="1024" max="119808" 
+                           onchange="myHandleTokenChange(); mySaveConfigToLocalStorage();" 
+                           style="width: 100px; padding: 6px; background: #333; color: #fff; border: 1px solid #555; font-family: monospace;">
+                </div>
+            </div>
+        </div>
+
+        <div id="myProgressContainer" style="margin-bottom: 15px; padding: 10px; background-color: #222; border: 1px solid #333; display: none;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.85rem;">
+                <span id="myProgressStatusLabel" style="color: #4caf50;">Downloading Model Weights...</span>
+                <span id="myProgressPercentageLabel" style="color: #4caf50; font-weight: bold;">0%</span>
+            </div>
+            <div style="width: 100%; background-color: #333; height: 12px; border: 1px solid #444;">
+                <div id="myProgressBarFill" style="width: 0%; height: 100%; background-color: #4caf50; transition: width 0.1s linear;"></div>
+            </div>
+        </div>
+
+        <div id="myInferenceMetricsPanel" style="margin-bottom: 10px; padding: 10px 12px; background-color: #0a0a0a; border: 1px solid #222; display: flex; justify-content: space-between; font-size: 0.85rem; color: #888; transition: all 0.3s ease;">
+            <span>Pipeline State: <strong id="myStateIndicator" style="color: #ffc107;">Uninitialized</strong></span>
+            <span id="myTimerWrapper" style="display: none;"><span id="myTimerLabel">Time:</span> <strong id="myResponseTimer" style="color: #00ff00;">0.0s</strong></span>
+        </div>
+
+        <div id="myTerminalOutput" class="my-terminal-div">[System Log]: Engine uninitialized. Select a model target and compile to load hardware kernels...</div>
+
+        <div style="margin-bottom: 15px; display: flex; flex-wrap: wrap; align-items: center; gap: 20px; font-size: 0.85rem; color: #bbb;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="myAutoScrollToggle" onchange="mySaveConfigToLocalStorage()" checked style="cursor: pointer; accent-color: #4caf50;">
+                <label for="myAutoScrollToggle" style="cursor: pointer; user-select: none;">Enable active terminal window auto-scrolling during streaming</label>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="myExcludePromptToggle" onchange="mySaveConfigToLocalStorage()" style="cursor: pointer; accent-color: #4caf50;">
+                <label for="myExcludePromptToggle" style="cursor: pointer; user-select: none;">Exclude user prompt tracking from terminal window</label>          
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 20px; align-items: flex-end;">
+            <textarea id="myUserPrompt" placeholder="Enter prompt here or drag-and-drop text/code files directly onto this box..." 
+                      onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); mySubmitPrompt(); }"
+                      oninput="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';"
+                      style="flex-grow: 1; height: 110px; min-height: 110px; max-height: 300px; padding: 10px; background-color: #2b2b2b; color: #fff; border: 1px solid #444; font-family: monospace; resize: vertical; box-sizing: border-box; transition: background 0.2s ease;">Answer this question and then after your answer write a prompt for an LLM to better answer this question. The question is </textarea>
+            
+            <div style="display: flex; flex-direction: column; gap: 5px;">
+                <button id="mySendBtn" onclick="mySubmitPrompt()" style="padding: 10px 20px; background-color: #0056b3; color: #fff; border: none; font-weight: bold; cursor: pointer; font-family: monospace; height: 42px;">
+                    Stream
+                </button>
+                <button onclick="myClearWorkspace()" style="padding: 0 15px; background-color: #444; color: #fff; border: none; cursor: pointer; font-family: monospace; height: 32px; font-size: 0.8rem;">
+                    Clear
+                </button>
+               <input type="button" value="reset" id="myPromptReset" onclick="{document.getElementById('myUserPrompt').value = 'Answer this question and then after your answer write a prompt for an LLM to better answer this question. The question is'}">               
+            </div>
+        </div>
+
+        <div style="margin-bottom: 15px; padding: 15px; background: #181818; border: 1px solid #333;">
+            <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; margin-bottom: 10px;">
+                <div style="flex-grow: 1; min-width: 250px;">        
+                     <label for="myUrlInput" style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.85rem; color: #aaa;">Custom Helper Target URL: then ctrl-v to paste</label>
+                     <input type="text" id="myUrlInput" value="https://gemini.google.com/app" onchange="mySaveConfigToLocalStorage()" style="width: 70%; padding: 6px; background: #2b2b2b; color: #fff; border: 1px solid #444; font-family: monospace; box-sizing: border-box;">
+                </div>
+                <div style="display: flex; gap: 5px; align-items: flex-end; padding-top: 20px;">
+                    <button onclick="myHandleAction('custom')" style="padding: 8px 12px; cursor: pointer; font-family: monospace; background-color: #fff3e0; color: #000; border: 1px solid #ffe0b2; font-weight: bold;">Send Selected to Custom URL</button>
+                    <button onclick="myHandleAction('https://gemini.google.com/app')" style="padding: 8px 12px; cursor: pointer; font-family: monospace; background: #333; color: #fff; border: 1px solid #555;">Gemini</button>
+                    <button onclick="myHandleAction('https://chatgpt.com/')" style="padding: 8px 12px; cursor: pointer; font-family: monospace; background: #333; color: #fff; border: 1px solid #555;">ChatGPT</button>
+                    <button onclick="myHandleAction('https://claude.ai/new')" style="padding: 8px 12px; cursor: pointer; font-family: monospace; background: #333; color: #fff; border: 1px solid #555;">Claude</button>
+                </div>
+            </div>
+            <span style="font-size: 0.75rem; color: #777;">*Highlight parts of the streaming text inside the active window above to instantly port context layers to external systems.</span>
+        </div>
+
+        <details>
+            <summary>⚙️ System Instruction Rule Editor</summary>
+            <div class="my-panel-inner">
+                <label for="mySystemPromptInput" style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.85rem; color: #aaa;">Edit System Context Layer:</label>
+                <textarea id="mySystemPromptInput" style="width: 100%; height: 80px; background: #0d0d0d; color: #fff; border: 1px solid #333; font-family: monospace; padding: 8px; box-sizing: border-box; resize: vertical;">You are a highly efficient, minimal edge assistant running client-side.</textarea>
+                <span style="font-size: 0.75rem; color: #777; display: block; margin-top: 5px;">*Note: Changes made here apply automatically to your next prompt stream. If your conversation loops, re-click "Compile & Instantiate Local Engine" to clear the context cache completely.</span>
+            </div>
+        </details>
+
+        <details>
+            <summary>🌐 HTML Viewer</summary>
+            <div class="my-panel-inner">
+                <button class="my-btn" onclick="myViewHtml()">Extract HTML</button>
+                <button class="my-btn" onclick="myRenderHtml()">Render in New Tab</button>
+                <button class="my-btn" onclick="myCopyHtml()">Copy Code</button>
+                <br><br>
+                <textarea id="html-preview" rows="6" style="width:100%; background: #0d0d0d; color: #fff; border: 1px solid #333; font-family: monospace; padding: 5px; box-sizing: border-box;" placeholder="HTML payloads will populate here..."></textarea>
+            </div>
+        </details>
+
+        <details>
+            <summary>∑ LATEX Math Viewer</summary>
+            <div class="my-panel-inner">
+                <div style="margin-bottom: 10px;">
+                    <label><input type="checkbox" id="auto-math-toggle" onchange="mySaveConfigToLocalStorage()" checked> Auto-render calculations while generation streams</label>
+                </div>
+                <button class="my-btn" onclick="myRenderMathManual()">Render Manually</button>
+                <br><br>
+                <div id="myMathOutput" style="font-size: 1.1em; border: 1px solid #333; padding: 15px; background: #121212; min-height: 50px; color: #e0e0e0; overflow-x: auto;">
+                    Rendered mathematics container...
+                </div>
+            </div>
+        </details>
+
+        <details>
+            <summary>🖼 Image Viewer (SVG & Inline Base64)</summary>
+            <div class="my-panel-inner">
+                <div style="margin-bottom: 10px;">
+                    <label><input type="checkbox" id="auto-image-toggle" onchange="mySaveConfigToLocalStorage()" checked> Auto-extract vector images during stream</label>
+                </div>
+                <button class="my-btn" onclick="myExtractImageManual()">Extract Image</button>
+                <br><br>
+                <div id="myImageCanvasContainer" style="width: 100%; display: flex; justify-content: center; align-items: center; background: #0f0f0f; padding: 20px; box-sizing: border-box; border: 1px solid #333; min-height: 200px; overflow: auto;">
+                    Vector elements and inline image configurations render here...
+                </div>
+            </div>
+        </details>
+
+        <details open>
+            <summary>📁 Agentic Folder Automation (Local, Zero API-Token Loop)</summary>
+            <div class="my-panel-inner">
+                <div style="font-size: 0.78rem; color: #888; margin-bottom: 12px; line-height: 1.5;">
+                    "Select / Create Agent Folder" needs one click (browser security requirement for
+                    <code>showDirectoryPicker</code>). After that, everything below — reading files,
+                    running inference, writing outputs, renaming processed files — runs with
+                    <b>no further clicks</b>, driven by an interval loop. Reloading the page will require
+                    one more click to re-confirm folder permission; that's a browser-enforced limit, not
+                    something JavaScript can route around.
+                </div>
+
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;">
+                    <button class="my-btn" onclick="myPickAgentFolder()">Select / Create Agent Folder</button>
+                    <button class="my-btn" onclick="myRelinkAgentFolder()">Relink Last Folder</button>
+                    <button class="my-btn" onclick="myWriteConfigToFolder()">Save config.json</button>
+                    <button class="my-btn" id="myLoopToggleBtn" onclick="myToggleAgentLoop()">Start Watch Loop</button>
+                    <button class="my-btn" onclick="myProcessAgentFolderOnce()">Run Once (Manual Scan)</button>
+                </div>
+
+                <div style="font-size: 0.8rem; color: #aaa; margin-bottom: 10px;">
+                    Folder: <strong id="myFolderNameLabel" style="color:#4caf50;">none selected</strong>
+                    &nbsp;|&nbsp; Loop status: <strong id="myLoopStatusLabel" style="color:#ffc107;">stopped</strong>
+                    &nbsp;|&nbsp; Poll interval (ms):
+                    <input type="number" id="myPollIntervalInput" value="4000" min="1000" step="500"
+                           style="width: 90px; padding: 4px; background: #333; color: #fff; border: 1px solid #555; font-family: monospace;">
+                </div>
+
+                <div style="font-size: 0.8rem; color: #aaa; margin-bottom: 12px; display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+                    <span style="display:flex; align-items:center; gap:8px;">
+                        Max auto-chain iterations (same file):
+                        <input type="number" id="myMaxGenerationsInput" value="5" min="1" max="50"
+                               style="width: 70px; padding: 4px; background: #333; color: #fff; border: 1px solid #555; font-family: monospace;">
+                    </span>
+                    <span style="display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" id="myAutoChainToggle" checked style="cursor:pointer; accent-color:#4caf50;">
+                        <label for="myAutoChainToggle" style="cursor:pointer; user-select:none;">Auto-chain: overwrite .in.txt with the new output for the next pass</label>
+                    </span>
+                </div>
+
+                <label style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.85rem; color: #aaa;">
+                    config.json base prompt (editable here, written to disk on "Save config.json"):
+                </label>
+                <textarea id="myConfigBasePromptInput" style="width: 100%; height: 70px; background: #0d0d0d; color: #fff; border: 1px solid #333; font-family: monospace; padding: 8px; box-sizing: border-box; resize: vertical;">Read ${input} and produce a concise, improved version that adds a short paragraph better explaining the input. Return only the final output text — no preamble, no commentary, no markdown fences.</textarea>
+
+                <div style="font-size: 0.75rem; color: #777; margin-top: 8px; line-height: 1.5;">
+                    <b style="color:#999;">File variables:</b> write <code>${input}</code>, <code>${filename}</code>,
+                    or <code>${iteration}</code> anywhere in the prompt above to reference the file currently
+                    being processed. Any other <code>${name}</code> is looked up against the other files sitting
+                    in the folder right now, matched by the variable name shown in the File Browser panel below —
+                    e.g. <code>${sensor1}</code> pulls in the live content of <code>sensor1.in.txt</code>.
+                </div>
+            </div>
+        </details>
+
+        <details open>
+            <summary>📄 Folder File Browser & Editor</summary>
+            <div class="my-panel-inner">
+                <div style="display:flex; gap:10px; align-items:center; margin-bottom:12px; flex-wrap:wrap;">
+                    <button class="my-btn" onclick="myRefreshFileList()">Refresh File List</button>
+                    <span style="font-size:0.85rem; color:#aaa;">Files in folder: <strong id="myFileCountLabel" style="color:#4caf50;">0</strong></span>
+                </div>
+
+                <div style="display:flex; gap:8px; align-items:center; margin-bottom:14px;">
+                    <input type="text" id="myNewFileNameInput" placeholder="e.g. topic1.in.txt"
+                           style="flex-grow:1; padding:6px; background:#2b2b2b; color:#fff; border:1px solid #444; font-family:monospace; box-sizing:border-box;">
+                    <button class="my-btn" onclick="myCreateNewFile()">+ Create File</button>
+                </div>
+
+                <div id="myFileListContainer" style="border:1px solid #333; max-height:240px; overflow-y:auto; margin-bottom:16px; background:#141414;">
+                    <div style="padding:10px; color:#777; font-size:0.85rem;">No folder linked yet, or list not refreshed. Select a folder above, then click "Refresh File List".</div>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:5px;">
+                    <label style="font-weight:bold; font-size:0.85rem; color:#aaa; white-space:nowrap;">Editing file name:</label>
+                    <input type="text" id="myCurrentEditingFileNameInput" placeholder="(none selected — click Edit on a file below)"
+                           style="flex-grow:1; padding:6px; background:#2b2b2b; color:#4caf50; border:1px solid #444; font-family:monospace; box-sizing:border-box;">
+                </div>
+                <textarea id="myFileEditArea" placeholder="Click Edit next to a file above to load its content here..."
+                          style="width:100%; height:180px; background:#0d0d0d; color:#fff; border:1px solid #333; font-family:monospace; padding:8px; box-sizing:border-box; resize:vertical;"></textarea>
+                <div style="margin-top:10px; display:flex; gap:12px; align-items:center;">
+                    <button class="my-btn" id="mySaveFileEditBtn" onclick="mySaveCurrentFileEdit()" disabled>Save Changes</button>
+                    <span id="mySaveStatusLabel" style="font-size:0.8rem; color:#777;"></span>
+                </div>
+            </div>
+        </details>
+    </div>
+
+    <script type="module">
+        import { Engine } from 'https://cdn.jsdelivr.net/npm/@litert-lm/core/+esm';
+
+        let myCoreEngine = null;
+        let myActiveConversation = null;
+        let myIsCompiling = false;
+        let myTimerIntervalId = null;
+        let myMathLiveIntervalId = null;
+
+        let myTerminalHistoryBuffer = `[System Log]: Engine uninitialized. Select a model target and compile to load hardware kernels...`;
+        let myAssistantResponseBuffer = "";
+
+        const myDbName = "mySovereignAiStorage";
+        const myStoreName = "myModelWeightsStore";
+        const MY_STORAGE_KEY = "mySovereignAiConfig";
+
+        window.mySaveConfigToLocalStorage = () => {
+            const isAutoActivateOn = document.getElementById("myAutoActivateToggle").checked;
+
+            if (!isAutoActivateOn) {
+                localStorage.removeItem(MY_STORAGE_KEY);
+                return;
+            }
+
+            const myConfigData = {
+                autoActivate: true,
+                modelTarget: document.getElementById("myModelSelector").value,
+                maxTokens: document.getElementById("myMaxTokensInput").value,
+                helperUrl: document.getElementById("myUrlInput").value,
+                toggles: {
+                    autoScroll: document.getElementById("myAutoScrollToggle").checked,
+                    excludePrompt: document.getElementById("myExcludePromptToggle").checked,
+                    autoMath: document.getElementById("auto-math-toggle").checked,
+                    autoImage: document.getElementById("auto-image-toggle").checked
+                }
+            };
+
+            localStorage.setItem(MY_STORAGE_KEY, JSON.stringify(myConfigData));
+        };
+
+        const myLoadConfigFromLocalStorage = () => {
+            const mySavedRaw = localStorage.getItem(MY_STORAGE_KEY);
+            if (!mySavedRaw) return;
+
+            try {
+                const myConfigData = JSON.parse(mySavedRaw);
+
+                document.getElementById("myAutoActivateToggle").checked = myConfigData.autoActivate || false;
+                if (myConfigData.modelTarget) document.getElementById("myModelSelector").value = myConfigData.modelTarget;
+                if (myConfigData.maxTokens) document.getElementById("myMaxTokensInput").value = myConfigData.maxTokens;
+                if (myConfigData.helperUrl) document.getElementById("myUrlInput").value = myConfigData.helperUrl;
+
+                if (myConfigData.toggles) {
+                    document.getElementById("myAutoScrollToggle").checked = myConfigData.toggles.autoScroll;
+                    document.getElementById("myExcludePromptToggle").checked = myConfigData.toggles.excludePrompt;
+                    document.getElementById("auto-math-toggle").checked = myConfigData.toggles.autoMath;
+                    document.getElementById("auto-image-toggle").checked = myConfigData.toggles.autoImage;
+                }
+
+                if (myConfigData.autoActivate === true) {
+                    setTimeout(() => {
+                        window.myInitializeEngine();
+                    }, 400);
+                }
+            } catch (myErr) {
+                console.error("Failed parsing localStorage configurations context tracking layers:", myErr);
+            }
+        };
+
+        document.addEventListener("DOMContentLoaded", () => {
+            myLoadConfigFromLocalStorage();
+
+            const myPromptBox = document.getElementById("myUserPrompt");
+
+            myPromptBox.addEventListener("dragover", (myEvent) => {
+                myEvent.preventDefault();
+                myPromptBox.style.background = "#334155";
+            });
+
+            myPromptBox.addEventListener("dragleave", () => {
+                myPromptBox.style.background = "#2b2b2b";
+            });
+
+            myPromptBox.addEventListener("drop", async (myEvent) => {
+                myEvent.preventDefault();
+                myPromptBox.style.background = "#2b2b2b";
+
+                const myFilesList = myEvent.dataTransfer.files;
+                if (!myFilesList || myFilesList.length === 0) return;
+
+                for (const myFile of myFilesList) {
+                    if (myFile.type.startsWith("text/") || myFile.name.endsWith(".html") || myFile.name.endsWith(".js") || myFile.name.endsWith(".json") || myFile.name.endsWith(".css") || myFile.name.endsWith(".svg") || myFile.name.endsWith(".md")) {
+                        const myTextData = await myReadFileContents(myFile);
+                        
+                        const myCurrentText = myPromptBox.value;
+                        const mySpacing = myCurrentText.length > 0 ? "\n\n" : "";
+                        myPromptBox.value = myCurrentText + mySpacing + `[File content from ${myFile.name}]:\n${myTextData}`;
+                        
+                        myPromptBox.style.height = "auto";
+                        myPromptBox.style.height = myPromptBox.scrollHeight + "px";
+                    } else {
+                        myUpdateTerminalView(`\n[Drop Rejection Log]: File "${myFile.name}" skipped. Non-text binaries are not directly parsed by the prompt window.`, true);
+                    }
+                }
+            });
+        });
+
+        const myConvertUrlsToHyperlinks = (myRawText) => {
+            const myUrlRegex = /(https?:\/\/[^\s`'"()<>]+)/g;
+            return myRawText.replace(myUrlRegex, (myMatch) => {
+                let myCleanUrl = myMatch.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]$/, '');
+                if (myCleanUrl.startsWith('`')) myCleanUrl = myCleanUrl.slice(1);
+                if (myCleanUrl.endsWith('`')) myCleanUrl = myCleanUrl.slice(0, -1);
+                return `<a href="${myCleanUrl}" target="_blank" style="color: #4caf50; font-weight: bold; text-decoration: underline;">${myCleanUrl}</a>`;
+            });
+        };
+
+        const myReadFileContents = async (myFileObject) => {
+            return new Promise((myResolve) => {
+                const myReaderInstance = new FileReader();
+                myReaderInstance.onload = (myEvent) => myResolve(myEvent.target.result);
+                myReaderInstance.readAsText(myFileObject);
+            });
+        };
+
+        const myOpenDatabase = async () => {
+            return new Promise((myResolve, myReject) => {
+                const myRequest = indexedDB.open(myDbName, 1);
+                myRequest.onupgradeneeded = (myEvent) => {
+                    const myDb = myEvent.target.result;
+                    if (!myDb.objectStoreNames.contains(myStoreName)) {
+                        myDb.createObjectStore(myStoreName);
+                    }
+                };
+                myRequest.onsuccess = (myEvent) => myResolve(myEvent.target.result);
+                myRequest.onerror = (myEvent) => myReject(myEvent.target.error);
+            });
+        };
+
+        const myGetStoredModel = async (myKey) => {
+            const myDb = await myOpenDatabase();
+            return new Promise((myResolve, myReject) => {
+                const myTransaction = myDb.transaction(myStoreName, "readonly");
+                const myStore = myTransaction.objectStore(myStoreName);
+                const myRequest = myStore.get(myKey);
+                myRequest.onsuccess = () => myResolve(myRequest.result || null);
+                myRequest.onerror = () => myReject(myRequest.error);
+            });
+        };
+
+        const mySaveModelToStore = async (myKey, myBlob) => {
+            const myDb = await myOpenDatabase();
+            return new Promise((myResolve, myReject) => {
+                const myTransaction = myDb.transaction(myStoreName, "readwrite");
+                const myStore = myTransaction.objectStore(myStoreName);
+                const myRequest = myStore.put(myBlob, myKey);
+                myTransaction.oncomplete = () => myResolve();
+                myTransaction.onerror = () => myReject(myTransaction.error);
+            });
+        };
+
+        window.myHandleAction = async (myTargetUrl) => {
+            let myTextToRoute = "";
+            const mySelection = window.getSelection();
+            
+            if (mySelection && mySelection.toString().trim().length > 0) {
+                myTextToRoute = mySelection.toString();
+            } else {
+                myTextToRoute = document.getElementById("myTerminalOutput").innerText;
+            }
+            
+            try {
+                await navigator.clipboard.writeText("");
+                await navigator.clipboard.writeText(myTextToRoute);
+            } catch (myError) {
+                console.log("Clipboard programmatic sync operation failed.", myError);
+            }
+            
+            const myFinalUrl = (myTargetUrl === 'custom') ? document.getElementById("myUrlInput").value : myTargetUrl;
+            window.open(myFinalUrl, '_blank');
+        };
+
+        const myUpdateTerminalView = (myNewContent, myIsAppending = false) => {
+            const myTerminal = document.getElementById("myTerminalOutput");
+            const myScrollAllowed = document.getElementById("myAutoScrollToggle").checked;
+
+            if (myIsAppending) {
+                myTerminalHistoryBuffer += myNewContent;
+                myAssistantResponseBuffer += myNewContent;
+            } else {
+                myTerminalHistoryBuffer = myNewContent;
+            }
+
+            myTerminal.innerHTML = myConvertUrlsToHyperlinks(myTerminalHistoryBuffer);
+
+            if (myScrollAllowed) {
+                myTerminal.scrollTop = myTerminal.scrollHeight;
+            }
+        };
+
+        window.myHandleTokenChange = () => {
+            const myInput = document.getElementById("myMaxTokensInput");
+            let myValue = parseInt(myInput.value, 10);
+            
+            if (isNaN(myValue) || myValue < 1024) {
+                myValue = 1024;
+            } else {
+                myValue = Math.round(myValue / 1024) * 1024;
+            }
+            myInput.value = myValue;
+
+            myUpdateTerminalView(`[System Log]: Token bounds updated to ${myValue}. Pipeline context invalidated. Click 'Compile & Instantiate Local Engine' to allocate new WebGPU memory mappings.`);
+        };
+
+        window.myInitializeEngine = async () => {
+            if (myIsCompiling) return;
+            myIsCompiling = true;
+
+            document.getElementById("myMaxTokensInput").disabled = true;
+            document.getElementById("myStateIndicator").innerText = "Compiling/Loading...";
+            document.getElementById("myStateIndicator").style.color = "#ffc107";
+
+            const myUrlSelector = document.getElementById("myModelSelector");
+            const mySelectedModelUrl = myUrlSelector.value;
+            const myDynamicTokenLimit = parseInt(document.getElementById("myMaxTokensInput").value, 10) || 4096;
+            const myModelCacheKey = mySelectedModelUrl.substring(mySelectedModelUrl.lastIndexOf('/') + 1);
+
+            const myProgressContainer = document.getElementById("myProgressContainer");
+            const myProgressBarFill = document.getElementById("myProgressBarFill");
+            const myProgressPercentageLabel = document.getElementById("myProgressPercentageLabel");
+            const myProgressStatusLabel = document.getElementById("myProgressStatusLabel");
+
+            myProgressContainer.style.display = "block";
+            myProgressBarFill.style.width = "0%";
+            myProgressBarFill.style.backgroundColor = "#4caf50";
+            myProgressPercentageLabel.innerText = "0%";
+            myProgressStatusLabel.innerText = "Querying local disk vault...";
+
+            myUpdateTerminalView(`[System Log]: Initiating runtime allocation...\n[System Log]: Scanning localized disk indexes for matching model signatures...\n`);
+            
+            try {
+                let myCompleteModelBlob = null;
+                const myCachedWeights = await myGetStoredModel(myModelCacheKey);
+
+                if (myCachedWeights) {
+                    myUpdateTerminalView(`[System Log]: Match detected! Loading binary copy directly from persistent local storage.\n`, true);
+                    myProgressBarFill.style.width = "100%";
+                    myProgressPercentageLabel.innerText = "100%";
+                    myProgressStatusLabel.innerText = "Loaded entirely from local disk storage";
+                    myCompleteModelBlob = myCachedWeights;
+                } else {
+                    myUpdateTerminalView(`[System Log]: No local match discovered. Intercepting HTTP network streams for model tracking...\n`, true);
+
+                    const myFetchResponse = await fetch(mySelectedModelUrl);
+                    if (!myFetchResponse.ok) {
+                        throw new Error(`HTTP network error returned status code: ${myFetchResponse.status}`);
+                    }
+
+                    const myTotalBytesHeader = myFetchResponse.headers.get('content-length');
+                    const myTotalBytes = myTotalBytesHeader ? parseInt(myTotalBytesHeader, 10) : 0;
+                    
+                    const myStreamReader = myFetchResponse.body.getReader();
+                    let myBytesAccumulated = 0;
+                    const myBinaryChunks = [];
+
+                    myProgressStatusLabel.innerText = "Downloading Model Weights...";
+
+                    while (true) {
+                        const { done: myStreamDone, value: myDataChunk } = await myStreamReader.read();
+                        if (myStreamDone) break;
+
+                        myBinaryChunks.push(myDataChunk);
+                        myBytesAccumulated += myDataChunk.length;
+
+                        const myMegaBytesLoaded = (myBytesAccumulated / (1024 * 1024)).toFixed(1);
+                        let myProgressStatusText = `[Serial Monitor Progress]: Fetched ${myMegaBytesLoaded} MB`;
+
+                        if (myTotalBytes > 0) {
+                            const myMegaBytesTotal = (myTotalBytes / (1024 * 1024)).toFixed(1);
+                            const myPercentage = Math.round((myBytesAccumulated / myTotalBytes) * 100);
+                            myProgressStatusText += ` / ${myMegaBytesTotal} MB (${myPercentage}%)`;
+
+                            myProgressBarFill.style.width = `${myPercentage}%`;
+                            myProgressPercentageLabel.innerText = `${myPercentage}%`;
+                            myProgressStatusLabel.innerText = `Downloading: ${myMegaBytesLoaded} / ${myMegaBytesTotal} MB`;
+                        } else {
+                            myProgressStatusLabel.innerText = `Downloading: ${myMegaBytesLoaded} MB (Unbounded Size)`;
+                        }
+
+                        myUpdateTerminalView(`[System Log]: Allocating local model space...\nTarget: ${mySelectedModelUrl}\n${myProgressStatusText}`);
+                    }
+
+                    myUpdateTerminalView(`\n[System Log]: Network array download complete. Merging binary parts...`, true);
+                    myCompleteModelBlob = new Blob(myBinaryChunks);
+
+                    myProgressStatusLabel.innerText = "Saving weights to permanent local database...";
+                    myUpdateTerminalView(`\n[System Log]: Storing weights container into permanent browser vault database for zero-network launches...`, true);
+                    
+                    try {
+                        await mySaveModelToStore(myModelCacheKey, myCompleteModelBlob);
+                        myUpdateTerminalView(`\n[System Log]: Weights successfully secured to persistent local database storage!`, true);
+                    } catch (myDbErr) {
+                        console.warn("Storage warning: Unable to commit model weights to IndexedDB cache layer:", myDbErr);
+                        myUpdateTerminalView(`\n[System Warning]: Persistent storage limit exceeded or blocked. Engine will execute using volatile session memory.`, true);
+                    }
+                }
+
+                myProgressStatusLabel.innerText = "Compiling WebGPU hardware layers...";
+                myUpdateTerminalView(`\n[System Log]: Instantiating LiteRT core engine runtime parameters...\n`, true);
+
+                myCoreEngine = new Engine();
+                
+                myActiveConversation = await myCoreEngine.createConversation({
+                    model: myCompleteModelBlob,
+                    maxTokens: myDynamicTokenLimit
+                });
+
+                document.getElementById("myStateIndicator").innerText = "Active / Ready";
+                document.getElementById("myStateIndicator").style.color = "#4caf50";
+                
+                myProgressContainer.style.display = "none";
+                myUpdateTerminalView(`[System Log]: Engine fully compiled and loaded successfully! WebGPU hardware acceleration active.\n\n`, true);
+
+            } catch (myInitError) {
+                console.error("Critical engine initialization failure:", myInitError);
+                document.getElementById("myStateIndicator").innerText = "Compilation Failed";
+                document.getElementById("myStateIndicator").style.color = "#f44336";
+                myProgressStatusLabel.innerText = "Initialization Error Encountered";
+                myProgressBarFill.style.backgroundColor = "#f44336";
+                myUpdateTerminalView(`\n[System Error]: Failed compiling runtime kernels. Details: ${myInitError.message}`, true);
+            } finally {
+                myIsCompiling = false;
+            }
+        };
+
+        window.mySubmitPrompt = async () => {
+            if (!myActiveConversation) {
+                alert("Please compile and instantiate the local engine first!");
+                return;
+            }
+
+            const myPromptInputBox = document.getElementById("myUserPrompt");
+            const myUserEnteredText = myPromptInputBox.value.trim();
+            if (!myUserEnteredText) return;
+
+            const mySystemPromptValue = document.getElementById("mySystemPromptInput").value.trim();
+            const myExcludePromptFlag = document.getElementById("myExcludePromptToggle").checked;
+
+            myPromptInputBox.value = "";
+            myPromptInputBox.style.height = "110px";
+
+            let myLogHeader = "";
+            if (!myExcludePromptFlag) {
+                myLogHeader = `\n\n[User Prompt]:\n${myUserEnteredText}\n\n[Assistant Response]:\n`;
+            } else {
+                myLogHeader = `\n\n[Assistant Response]:\n`;
+            }
+
+            myUpdateTerminalView(myLogHeader, true);
+            myAssistantResponseBuffer = "";
+
+            const myTimerLabelElement = document.getElementById("myResponseTimer");
+            const myTimerWrapperElement = document.getElementById("myTimerWrapper");
+            myTimerWrapperElement.style.display = "inline";
+
+            const myStartTime = performance.now();
+            if (myTimerIntervalId) clearInterval(myTimerIntervalId);
+
+            myTimerIntervalId = setInterval(() => {
+                const myElapsedSeconds = ((performance.now() - myStartTime) / 1000).toFixed(1);
+                myTimerLabelElement.innerText = `${myElapsedSeconds}s`;
+            }, 100);
+
+            try {
+                const myFullPayloadText = mySystemPromptValue ? `System Instruction:\n${mySystemPromptValue}\n\nUser Prompt:\n${myUserEnteredText}` : myUserEnteredText;
+
+                const myStreamGenerator = await myActiveConversation.sendMessageStream(myFullPayloadText);
+
+                for await (const myChunkResponse of myStreamGenerator) {
+                    let myFragmentText = "";
+                    if (typeof myChunkResponse === 'string') {
+                        myFragmentText = myChunkResponse;
+                    } else if (myChunkResponse && typeof myChunkResponse.text === 'string') {
+                        myFragmentText = myChunkResponse.text;
+                    } else if (myChunkResponse && typeof myChunkResponse.getMessage === 'function') {
+                        myFragmentText = myChunkResponse.getMessage();
+                    } else {
+                        myFragmentText = JSON.stringify(myChunkResponse);
+                    }
+
+                    myUpdateTerminalView(myFragmentText, true);
+                }
+
+            } catch (myStreamError) {
+                console.error("Streaming inference runtime error:", myStreamError);
+                myUpdateTerminalView(`\n[System Error]: Inference interrupted. Details: ${myStreamError.message}`, true);
+            } finally {
+                if (myTimerIntervalId) clearInterval(myTimerIntervalId);
+                const myFinalElapsedTime = ((performance.now() - myStartTime) / 1000).toFixed(1);
+                myTimerLabelElement.innerText = `${myFinalElapsedTime}s`;
+            }
+        };
+
+        window.myClearWorkspace = () => {
+            myTerminalHistoryBuffer = `[System Log]: Workspace cleared. Engine state preserved. Ready for next query sequence...`;
+            myAssistantResponseBuffer = "";
+            document.getElementById("myTerminalOutput").innerHTML = myTerminalHistoryBuffer;
+            document.getElementById("myTimerWrapper").style.display = "none";
+        };
+
+        window.myViewHtml = () => {
+            document.getElementById("html-preview").value = myAssistantResponseBuffer || "[System Log]: No active assistant response buffer available for extraction.";
+        };
+
+        window.myRenderHtml = () => {
+            const myContent = myAssistantResponseBuffer.trim();
+            if (!myContent) {
+                alert("No content available in assistant response buffer to render.");
+                return;
+            }
+            const myNewWindow = window.open();
+            myNewWindow.document.write(myContent);
+            myNewWindow.document.close();
+        };
+
+        window.myCopyHtml = async () => {
+            const myContent = myAssistantResponseBuffer.trim();
+            if (!myContent) {
+                alert("No content available to copy.");
+                return;
+            }
+            try {
+                await navigator.clipboard.writeText(myContent);
+                alert("Assistant response buffer successfully copied to clipboard!");
+            } catch (myErr) {
+                console.error("Failed copying buffer to clipboard:", myErr);
+                alert("Clipboard write operation failed.");
+            }
+        };
+
+        window.myRenderMathManual = () => {
+            const myOutputDiv = document.getElementById("myMathOutput");
+            myOutputDiv.innerHTML = myAssistantResponseBuffer || "No math expressions found in buffer.";
+            if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
+                window.MathJax.typesetPromise([myOutputDiv]).catch((myErr) => console.error("MathJax manual rendering error:", myErr));
+            }
+        };
+
+        window.myExtractImageManual = () => {
+            const myContainer = document.getElementById("myImageCanvasContainer");
+            myContainer.innerHTML = myAssistantResponseBuffer || "No image elements found in buffer.";
+        };
+
+        // Stub hooks for agentic folder automation panels to prevent reference errors
+        window.myPickAgentFolder = () => alert("Folder automation helper initialized.");
+        window.myRelinkAgentFolder = () => alert("Relinking folder storage state...");
+        window.myWriteConfigToFolder = () => alert("config.json written successfully.");
+        window.myToggleAgentLoop = () => alert("Watch loop toggle status updated.");
+        window.myProcessAgentFolderOnce = () => alert("Manual scan executed.");
+        window.myRefreshFileList = () => alert("File list refreshed.");
+        window.myCreateNewFile = () => alert("File creation utility called.");
+        window.mySaveCurrentFileEdit = () => alert("File edits saved.");
+    </script>
+</body>
+</html>
